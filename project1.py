@@ -40,11 +40,11 @@ class graph:
 #--------------------------------------------------------------------
 
 
-def relax1(u,v,weight,parent,distance) :
+def relax1(u,v,weight,parents,distance) :
     
     if distance[v]>distance[u]+weight :
         distance[v]=distance[u]+weight
-        parent[v]=u
+        parents[v]=u
 
 
 # weryfikacja krawędzi z u do v
