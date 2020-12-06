@@ -244,6 +244,7 @@ int main() {
         int min_king_wins = ceil(static_cast<double>(n-1)/2) ;
         bool found = false;
 
+
         for (int wins=min_king_wins; wins < n; wins++) {
             Graph graph = copy_g(&original_g);
 
@@ -251,7 +252,9 @@ int main() {
 
             for (int v = 0; v < n; v++) {
                 if (v == 0) {
+                    // 0 -> t  od wins do n-1 zwycięstw
                     add_edge(&graph, v, t1, wins, 0);
+                    add_edge(&graph, v, t, n-1-wins, 0);
                 } else {
                     add_edge(&graph, v, t, wins, 0);
                 }
@@ -263,6 +266,8 @@ int main() {
                 break;
             }
         }
+
+
         if (!found) {
             cout << "NIE" << endl;
         }
