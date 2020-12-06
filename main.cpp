@@ -108,15 +108,19 @@ bool BellmanFord(Graph *g, int s, int t, int *parents, Edge** parentsEdge){
     distance[s] = 0;
 
     for(int i=0; i<(g->size)-1; i++){
+        bool relaxed = false;
         for(int u=0; u<(g->size); u++){
             for(int edge=0; edge<(g->adj_list[u].size()); edge++){
                 if (g->adj_list[u][edge]->capacity != 0){
                     if (relax(u, g->adj_list[u][edge]->v, g->adj_list[u][edge]->cost,distance,parents)){
                         parentsEdge[g->adj_list[u][edge]->v] = g->adj_list[u][edge];
+                        relaxed = true;
                     }
+
                 }
             }
         }
+        if (!relaxed) break;
     }
     return distance[t] != INT_MAX;
 }
@@ -196,16 +200,6 @@ Graph copy_g(Graph* g){
 
 int main() {
 
-//    Graph g;
-//    g = init_graph(4);
-//    add_edge(&g,0,1,3,5);
-//    add_edge(&g,2,1,31,1);
-//    add_edge(&g,0,2,8,3);
-//    add_edge(&g,1,3,3,2);
-
-//    min_cost_flow(&g,0,1);
-
-
 
     // tournaments
     int T;
@@ -239,14 +233,14 @@ int main() {
             cur_match++;
         }
 
-        Graph original_g = copy_g(&g);
+//        Graph original_g = copy_g(&g);
 
         int min_king_wins = ceil(static_cast<double>(n-1)/2) ;
         bool found = false;
 
 
         for (int wins=min_king_wins; wins < n; wins++) {
-            Graph graph = copy_g(&original_g);
+            Graph graph = copy_g(&g);
 
             add_edge(&graph, t, t1, int(n * (n - 1) / 2) - wins, 0);
 
