@@ -1,23 +1,23 @@
 #include <iostream>
 #include <vector>
-#include <limits.h>
+#include <climits>
 #include <cmath>
 
 using namespace std;
 
 
-void print_arr(int *arr, int size){
-
-    for (int i=0; i<size; i++){
-        if (arr[i] != INT_MAX){
-            cout  << arr[i] << " ";
-        }
-        else{
-            cout  << "inf ";
-        }
-    }
-    cout << endl;
-}
+//void print_arr(int *arr, int size){
+//
+//    for (int i=0; i<size; i++){
+//        if (arr[i] != INT_MAX){
+//            cout  << arr[i] << " ";
+//        }
+//        else{
+//            cout  << "inf ";
+//        }
+//    }
+//    cout << endl;
+//}
 
 
 //////////////////////////////////////////////////////////////////////////////////////
@@ -30,7 +30,8 @@ struct Edge{
     int v;
     int capacity;
     int cost;
-    //Edge* counterEdge;   ???
+    Edge* backEdge;
+    bool isBack;
 };
 
 struct Graph{
@@ -39,12 +40,23 @@ struct Graph{
 
 };
 
+
 void add_edge(Graph *g, int u, int v, int capacity, int cost){
     Edge* edge = new Edge;
     edge->v = v;
     edge->capacity = capacity;
     edge->cost = cost;
+    edge -> isBack = false;
+
+    Edge* back_edge = new Edge;
+    back_edge->v = u;
+    back_edge->capacity = 0;
+    back_edge->cost = -1*cost;
+    back_edge -> isBack = true;
+    edge->backEdge = back_edge;
+    back_edge->backEdge = edge;
     (*g).adj_list[u].push_back(edge);
+    (*g).adj_list[v].push_back(back_edge);
 }
 
 
@@ -56,32 +68,35 @@ Graph init_graph(int size){
 }
 
 
-void printGraph(Graph g){
-    for(int i=0; i<g.size; i++){
-        for(int j=0; j<g.adj_list[i].size(); j++){
-            cout << i << ": " << g.adj_list[i][j]->v << " " << (g.adj_list[i][j]->capacity) << " " << g.adj_list[i][j]->cost << endl;
-        }
-    }
-    cout << endl;
-}
+//void printGraph(Graph* g){
+//    for(int i=0; i<g->size; i++){
+//        for(int j=0; j<g->adj_list[i].size(); j++){
+//            cout << i << ": " << g->adj_list[i][j]->v << " " << (g->adj_list[i][j]->capacity)
+//            << " " << g->adj_list[i][j]->cost << " " << g->adj_list[i][j]->isBack << endl;
+//        }
+//    }
+//    cout << endl;
+//}
 
 //////////////////////////////////////////////////////////////////////////////////////
 ///////////////////// algorytm Bellmana Forda ////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////
 
 
-
-void relax(int u, int v, int weight, int *distance, int *parents){
+// true jeśli zrelaksowano, false w p.p.
+bool relax(int u, int v, int weight, int *distance, int *parents){
     if (distance[u] != INT_MAX && distance[v] > distance[u] + weight){
         distance[v] = distance[u] + weight;
         parents[v] = u;
+        return true;
     }
+    return false;
 }
 
 // weryfikacja niepotrzebna?
 
 
-bool BellmanFord(Graph *g, int s, int t, int *parents){
+bool BellmanFord(Graph *g, int s, int t, int *parents, Edge** parentsEdge){
 
     int distance[g->size];
 
@@ -96,16 +111,13 @@ bool BellmanFord(Graph *g, int s, int t, int *parents){
         for(int u=0; u<(g->size); u++){
             for(int edge=0; edge<(g->adj_list[u].size()); edge++){
                 if (g->adj_list[u][edge]->capacity != 0){
-                    relax(u, g->adj_list[u][edge]->v, g->adj_list[u][edge]->cost,distance,parents);
+                    if (relax(u, g->adj_list[u][edge]->v, g->adj_list[u][edge]->cost,distance,parents)){
+                        parentsEdge[g->adj_list[u][edge]->v] = g->adj_list[u][edge];
+                    }
                 }
             }
         }
     }
-//    cout << endl<<"distance " <<endl;
-//    print_arr(distance, g.size);
-//    cout << endl<<"parents " <<endl;
-//    print_arr(parents, g.size);
-
     return distance[t] != INT_MAX;
 }
 
@@ -122,15 +134,36 @@ int min_cost_flow(Graph *g, int s, int t){
     }
     int flow = 0;
     int cost = 0;
+    Edge* parentsEdge[g->size];
 
-   while (BellmanFord(g,s,t,parents)){
+   while (BellmanFord(g,s,t,parents,parentsEdge)){
         int current = t;
         int cur_flow = INT_MAX;
-        while(current != s){
-            cur_flow = min(cur_flow, )
-                // todooooooooooo
+        while (current != s){
+            Edge* parentEdge = parentsEdge[current];
+            cur_flow = min(cur_flow,parentEdge->capacity);
+            current = parents[current];
         }
+
+        flow += cur_flow;
+
+        int v = t;
+        while (v != s){
+            Edge* parentEdge = parentsEdge[v];
+            parentEdge->capacity -= cur_flow;
+            cost += parentEdge->cost * cur_flow;
+
+            Edge* back_edge = parentsEdge[v]->backEdge;
+
+            back_edge->capacity += cur_flow;
+            v = parents[v];
+        }
+
+       for(int i=0; i<g->size; i++){
+           parents[i] = -1;
+       }
    }
+   return cost;
 }
 
 
@@ -140,30 +173,39 @@ int min_cost_flow(Graph *g, int s, int t){
 //////////////////////////////////////////////////////////////////////////////////////
 
 // input: B, t
-Graph build_graph(int budget, int entrances){
+Graph build_graph(int entrances){
     int n = entrances;
-    Graph g;
-    int g_size = int((pow(n,2)+n+6)/2);
-
-    g = init_graph(g_size);
+    Graph g = init_graph(int((pow(n,2)+n+6)/2));
     return g;
 }
 
 
+Graph copy_g(Graph* g){
+    Graph cp = init_graph(g->size);
+
+    for(int i=0; i<g->size; i++) {
+        for (int j = 0; j < g->adj_list[i].size(); j++) {
+            if (! g->adj_list[i][j]->isBack) {
+                add_edge(&cp, i, g->adj_list[i][j]->v, g->adj_list[i][j]->capacity, g->adj_list[i][j]->cost);
+            }
+
+        }
+    }
+    return cp;
+}
 
 int main() {
 
-    Graph g;
-    g = init_graph(4);
-    add_edge(&g,0,1,3,5);
-    add_edge(&g,2,1,31,1);
-    add_edge(&g,0,2,8,3);
-    add_edge(&g,1,3,3,2);
-    add_edge(&g,2,3,31,7);
-    printGraph(g);
+//    Graph g;
+//    g = init_graph(4);
+//    add_edge(&g,0,1,3,5);
+//    add_edge(&g,2,1,31,1);
+//    add_edge(&g,0,2,8,3);
+//    add_edge(&g,1,3,3,2);
+
+//    min_cost_flow(&g,0,1);
 
 
-    min_cost_flow(&g,0,1);
 
     // tournaments
     int T;
@@ -172,8 +214,7 @@ int main() {
         // budget, entrances
         int B,n;
         cin >> B >> n;
-        Graph g;
-        g = build_graph(B,n);
+        Graph g = build_graph(n);
         int cur_match = n;
         int s = int((pow(n,2)+n)/2);
         int t = s+1;
@@ -197,22 +238,41 @@ int main() {
 
             cur_match++;
         }
-        // king_wins == 1
-        add_edge(&g,t,t1,int(n*(n-1)/2) - 1,0);
 
-        for (int v=0; v<n; v++){
-            if (v==0){
-                // king_wins == 1
-                add_edge(&g,v,t1,1,0);
+        Graph original_g = copy_g(&g);
+
+        int min_king_wins = ceil(static_cast<double>(n-1)/2) ;
+        bool found = false;
+
+        for (int wins=min_king_wins; wins < n; wins++) {
+            Graph graph = copy_g(&original_g);
+
+            add_edge(&graph, t, t1, int(n * (n - 1) / 2) - wins, 0);
+
+            for (int v = 0; v < n; v++) {
+                if (v == 0) {
+                    add_edge(&graph, v, t1, wins, 0);
+                } else {
+                    add_edge(&graph, v, t, wins, 0);
+                }
             }
-            else{
-                add_edge(&g,v,t,1,0);
+            int total_cost = min_cost_flow(&graph, s, t1);
+            if (total_cost <= B){
+                cout << "TAK" << endl;
+                found = true;
+                break;
             }
         }
-        printGraph(g);
+        if (!found) {
+            cout << "NIE" << endl;
+        }
     }
-
-
-
-
+    return 0;
 }
+/*
+ * input:
+ * 3 5 3 0 1 0 0 1 2 2 5 0 2 2 3 10 4 0 1 1 5 0 3 0 0 0 2 2 14 1 2 2 3 1 3 1 8 2 3 2 1 1 4 0 1 1 5 0 3 0 0 0 2 2 14 1 2 2 3 1 3 1 8 2 3 2 1
+ *
+ * output :
+ * TAK TAK NIE
+*/
