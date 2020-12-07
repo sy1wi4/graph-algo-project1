@@ -54,8 +54,10 @@ void add_edge(Graph *g, int u, int v, int capacity, int cost){
     back_edge->capacity = 0;
     back_edge->cost = -1*cost;
     back_edge -> isBack = true;
+
     edge->backEdge = back_edge;
     back_edge->backEdge = edge;
+
     (*g).adj_list[u].push_back(edge);
     (*g).adj_list[v].push_back(back_edge);
 }
@@ -96,35 +98,46 @@ bool relax(int u, int v, int weight, int *distance, int *parents){
 
 
 
-//bool BellmanFord(Graph *g, int s, int t, int *parents, Edge** parentsEdge){
-//
-//    int distance[g->size];
-//
-//
-//    for(int i=0; i<g->size; i++){
-//        distance[i] = INT_MAX;
-//    }
-//
-//    distance[s] = 0;
-//
+bool BellmanFord(Graph *g, int s, int t, int *parents, Edge** parentsEdge){
+
+    int distance[g->size];
+    for(int i=0; i<g->size; i++){
+        distance[i] = INT_MAX;
+    }
+
+    distance[s] = 0;
+
+    bool inQueue[g->size];
+    for(int i=0; i<g->size; i++){
+        inQueue[i] = false;
+    }
+
+    queue<int> Q;
+    Q.push(s);
+    inQueue[s] = true;
+
+// faster BF algorithm
+
 //    for(int i=0; i<(g->size)-1; i++){
-//        bool relaxed = false;
-//        for(int u=0; u<(g->size); u++){
-//            for(int edge=0; edge<(g->adj_list[u].size()); edge++){
-//                if (g->adj_list[u][edge]->capacity != 0){
-//                    if (relax(u, g->adj_list[u][edge]->v, g->adj_list[u][edge]->cost,distance,parents)){
-//                        parentsEdge[g->adj_list[u][edge]->v] = g->adj_list[u][edge];
-//                        relaxed = true;
-//                    }
-//
-//                }
-//            }
-//        }
-//        if (!relaxed) break;
-//    }
-//
-//    return distance[t] != INT_MAX;
-//}
+    while (! Q.empty()){
+        int u = Q.front();
+        Q.pop();
+        inQueue[u] = false;
+        for(int edge=0; edge<(g->adj_list[u].size()); edge++){
+            if (g->adj_list[u][edge]->capacity != 0){
+                if (relax(u, g->adj_list[u][edge]->v, g->adj_list[u][edge]->cost,distance,parents)){
+                    parentsEdge[g->adj_list[u][edge]->v] = g->adj_list[u][edge];
+                    if (!inQueue[g->adj_list[u][edge]->v]){
+                        Q.push(g->adj_list[u][edge]->v);
+                        inQueue[g->adj_list[u][edge]->v] = true;
+                    }
+                }
+            }
+        }
+    }
+
+    return distance[t] != INT_MAX;
+}
 
 
 //////////////////////////////////////////////////////////////////////////////////////
@@ -185,7 +198,7 @@ int min_cost_flow(Graph *g, int s, int t){
     int cost = 0;
     Edge* parentsEdge[g->size];
 
-   while (Dijkstra(g,s,t,parents,parentsEdge)){
+   while (BellmanFord(g,s,t,parents,parentsEdge)){
         int current = t;
         int cur_flow = INT_MAX;
         while (current != s){
@@ -312,7 +325,6 @@ int main() {
             cur_match++;
         }
 
-//        Graph original_g = copy_g(&g);
 
         int min_king_wins = ceil(static_cast<double>(n-1)/2) ;
         bool found = false;
@@ -325,9 +337,7 @@ int main() {
 
             for (int v = 0; v < n; v++) {
                 if (v == 0) {
-                    // 0 -> t  od wins do n-1 zwycięstw
                     add_edge(&graph, v, t1, wins, 0);
-                    add_edge(&graph, v, t, n-1-wins, 0);
                 } else {
                     add_edge(&graph, v, t, wins, 0);
                 }
