@@ -2,6 +2,7 @@
 #include <vector>
 #include <climits>
 #include <cmath>
+#include <queue>
 
 using namespace std;
 
@@ -93,35 +94,79 @@ bool relax(int u, int v, int weight, int *distance, int *parents){
     return false;
 }
 
-// weryfikacja niepotrzebna?
 
 
-bool BellmanFord(Graph *g, int s, int t, int *parents, Edge** parentsEdge){
+//bool BellmanFord(Graph *g, int s, int t, int *parents, Edge** parentsEdge){
+//
+//    int distance[g->size];
+//
+//
+//    for(int i=0; i<g->size; i++){
+//        distance[i] = INT_MAX;
+//    }
+//
+//    distance[s] = 0;
+//
+//    for(int i=0; i<(g->size)-1; i++){
+//        bool relaxed = false;
+//        for(int u=0; u<(g->size); u++){
+//            for(int edge=0; edge<(g->adj_list[u].size()); edge++){
+//                if (g->adj_list[u][edge]->capacity != 0){
+//                    if (relax(u, g->adj_list[u][edge]->v, g->adj_list[u][edge]->cost,distance,parents)){
+//                        parentsEdge[g->adj_list[u][edge]->v] = g->adj_list[u][edge];
+//                        relaxed = true;
+//                    }
+//
+//                }
+//            }
+//        }
+//        if (!relaxed) break;
+//    }
+//
+//    return distance[t] != INT_MAX;
+//}
 
+
+//////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////// algorytm Dijkstry /////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////
+
+
+// para przechowuje odległość do s wierzchołka v  <dist,u>
+typedef pair<int, int> dist_u;
+
+bool Dijkstra(Graph *g, int s, int t, int *parents, Edge** parentsEdge){
+    // min heap
+    // para u,cost
+    priority_queue<dist_u ,vector<dist_u>, greater<dist_u> > PQ;
+
+    // wszystkie odległości ustalone na inf
     int distance[g->size];
-
-
     for(int i=0; i<g->size; i++){
         distance[i] = INT_MAX;
     }
 
     distance[s] = 0;
+    PQ.push(make_pair(0, s));
 
-    for(int i=0; i<(g->size)-1; i++){
-        bool relaxed = false;
-        for(int u=0; u<(g->size); u++){
-            for(int edge=0; edge<(g->adj_list[u].size()); edge++){
-                if (g->adj_list[u][edge]->capacity != 0){
-                    if (relax(u, g->adj_list[u][edge]->v, g->adj_list[u][edge]->cost,distance,parents)){
-                        parentsEdge[g->adj_list[u][edge]->v] = g->adj_list[u][edge];
-                        relaxed = true;
-                    }
+    while (! PQ.empty()){
+        // wyciągamy z kolejki
+        int u = PQ.top().second;
+        PQ.pop();
 
+        // przeglądamy sąsiadów u
+        for(int edge=0; edge<(g->adj_list[u].size()); edge++){
+            if (g->adj_list[u][edge]->capacity != 0){
+                if (relax(u, g->adj_list[u][edge]->v, g->adj_list[u][edge]->cost,distance,parents)){
+                    parentsEdge[g->adj_list[u][edge]->v] = g->adj_list[u][edge];
+                    PQ.push(make_pair(distance[g->adj_list[u][edge]->v],g->adj_list[u][edge]->v));
                 }
+
             }
         }
-        if (!relaxed) break;
+
     }
+
     return distance[t] != INT_MAX;
 }
 
@@ -140,7 +185,7 @@ int min_cost_flow(Graph *g, int s, int t){
     int cost = 0;
     Edge* parentsEdge[g->size];
 
-   while (BellmanFord(g,s,t,parents,parentsEdge)){
+   while (Dijkstra(g,s,t,parents,parentsEdge)){
         int current = t;
         int cur_flow = INT_MAX;
         while (current != s){
@@ -198,9 +243,43 @@ Graph copy_g(Graph* g){
     return cp;
 }
 
+
+
 int main() {
 
+//    Graph g;
+//    g = init_graph(4);
+//    add_edge(&g,0,1,3,5);
+//    add_edge(&g,2,1,31,1);
+//    add_edge(&g,0,2,8,3);
+//    add_edge(&g,1,3,3,2);
+//
+//    int parents[g.size];
+//    for(int i=0; i<g.size; i++){
+//        parents[i] = -1;
+//    }
+//    Edge* parentsEdge[g.size];
+//    BellmanFord(&g,1,3,parents,parentsEdge);
+//
+//    cout << endl;
+//
+//    Graph g1;
+//    g1 = init_graph(4);
+//    add_edge(&g1,0,1,3,5);
+//    add_edge(&g1,2,1,31,1);
+//    add_edge(&g1,0,2,8,3);
+//    add_edge(&g1,1,3,3,2);
+//
+//    int parents1[g1.size];
+//    for(int i=0; i<g1.size; i++){
+//        parents[i] = -1;
+//    }
+//    Edge* parentsEdge1[g1.size];
+//    Dijkstra(&g1,1,3,parents,parentsEdge);
 
+
+
+// ----------------------------------------------------------------
     // tournaments
     int T;
     cin >> T;
