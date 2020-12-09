@@ -22,11 +22,8 @@ void print_arr(int *arr, int size){
 
 
 ////////////////////////////////////////////////////////////////////////////////
-//////
 ///////////////////// tworzenie grafu //////////////////////////////////////////
-//////
 ////////////////////////////////////////////////////////////////////////////////
-//////
 
 
 // krawędź u -> v
@@ -156,7 +153,7 @@ bool BellmanFord(Graph *g, int s, int t, int *parents, Edge** parentsEdge){
 ///////////////////// min cost flow //////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////
 
-int min_cost_flow(Graph *g, int s, int t){
+int min_cost_flow(Graph *g, int s, int t, int required_flow){
     int parents[g->size];
     for(int i=0; i<g->size; i++){
         parents[i] = -1;
@@ -197,14 +194,17 @@ int min_cost_flow(Graph *g, int s, int t){
         }
 
         for(int i=0; i<g->size; i++){
-
             parents[i] = -1;
-
         }
 
     }
 
-    return cost;
+    if (flow == required_flow) {
+        return cost;
+    }
+    else{
+        return -1;
+    }
 
 }
 
@@ -284,7 +284,7 @@ int main() {
         int t1 = t+1;
 
         int actual_king_wins = 0;
-
+        int max_king_wins = n-1;
 
         for (int j = 0; j < n * (n - 1) / 2; j++) {
             // x vs y, winner, bribe
@@ -293,20 +293,24 @@ int main() {
 
             if (w == 0) actual_king_wins++;
 
-
-
-
-
             if (x==w){
                 add_edge(&g,cur_match,x,1,0);
-                add_edge(&g,cur_match,y,1,b);
-
-
+                if (b <= B) {
+                    add_edge(&g, cur_match, y, 1, b);
+                }
+                else if (y == 0){
+                    // łapówka w meczu z królem (przegrany) jest większa niż budżet
+                    max_king_wins -= 1;
+                }
             }
             else{
                 add_edge(&g,cur_match,y,1,0);
-                add_edge(&g,cur_match,x,1,b);
-
+                if (b <= B) {
+                    add_edge(&g,cur_match,x,1,b);
+                }
+                else if (x == 0){
+                    max_king_wins -= 1;
+                }
             }
 
             add_edge(&g,s,cur_match,1,0);
@@ -318,9 +322,10 @@ int main() {
         int min_king_wins = ceil(static_cast<double>(n-1)/2) ;
         bool found = false;
 
-
-        for (int wins=max(min_king_wins, actual_king_wins); wins < n; wins++) {
+        cout << max_king_wins << endl;
+        for (int wins=max(min_king_wins, actual_king_wins); wins < max_king_wins + 1; wins++) {
             Graph graph = copy_g(&g);
+
 
             add_edge(&graph, t, t1, int(n * (n - 1) / 2) - wins, 0);
 
@@ -332,11 +337,9 @@ int main() {
                 }
             }
 
+            int total_cost = min_cost_flow(&graph, s, t1, int(n*(n-1)/2));
 
-            int total_cost = min_cost_flow(&graph, s, t1);
-
-
-            if (total_cost <= B){
+            if (total_cost != -1 && total_cost <= B){
                 cout << "TAK" << endl;
                 found = true;
                 break;
