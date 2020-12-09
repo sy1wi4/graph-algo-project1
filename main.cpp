@@ -7,23 +7,26 @@
 using namespace std;
 
 
-//void print_arr(int *arr, int size){
-//
-//    for (int i=0; i<size; i++){
-//        if (arr[i] != INT_MAX){
-//            cout  << arr[i] << " ";
-//        }
-//        else{
-//            cout  << "inf ";
-//        }
-//    }
-//    cout << endl;
-//}
+void print_arr(int *arr, int size){
+
+    for (int i=0; i<size; i++){
+        if (arr[i] != INT_MAX){
+            cout  << arr[i] << " ";
+        }
+        else{
+            cout  << "inf ";
+        }
+    }
+    cout << endl;
+}
 
 
-//////////////////////////////////////////////////////////////////////////////////////
-///////////////////// tworzenie grafu ////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+//////
+///////////////////// tworzenie grafu //////////////////////////////////////////
+//////
+////////////////////////////////////////////////////////////////////////////////
+//////
 
 
 // krawędź u -> v
@@ -32,7 +35,6 @@ struct Edge{
     int capacity;
     int cost;
     Edge* backEdge;
-    bool isBack;
 };
 
 struct Graph{
@@ -47,19 +49,26 @@ void add_edge(Graph *g, int u, int v, int capacity, int cost){
     edge->v = v;
     edge->capacity = capacity;
     edge->cost = cost;
-    edge -> isBack = false;
 
+    edge->backEdge = nullptr;   // początkowo nie ma krawędzi powrotnych
+    (*g).adj_list[u].push_back(edge);
+
+}
+
+// tworzy krawędź powrotną dla krawędzi u->v  (v->u)
+void add_back_edge(Graph *g, Edge* edge, int u, int capacity) {
     Edge* back_edge = new Edge;
     back_edge->v = u;
-    back_edge->capacity = 0;
-    back_edge->cost = -1*cost;
-    back_edge -> isBack = true;
+    back_edge->capacity = capacity;
+
+    back_edge->cost = -1*edge->cost;
+
+    (*g).adj_list[edge->v].push_back(back_edge);
+
 
     edge->backEdge = back_edge;
     back_edge->backEdge = edge;
 
-    (*g).adj_list[u].push_back(edge);
-    (*g).adj_list[v].push_back(back_edge);
 }
 
 
@@ -71,15 +80,17 @@ Graph init_graph(int size){
 }
 
 
-//void printGraph(Graph* g){
-//    for(int i=0; i<g->size; i++){
-//        for(int j=0; j<g->adj_list[i].size(); j++){
-//            cout << i << ": " << g->adj_list[i][j]->v << " " << (g->adj_list[i][j]->capacity)
-//            << " " << g->adj_list[i][j]->cost << " " << g->adj_list[i][j]->isBack << endl;
-//        }
-//    }
-//    cout << endl;
-//}
+void printGraph(Graph* g){
+    for(int i=0; i<g->size; i++){
+        for(int j=0; j<g->adj_list[i].size(); j++){
+            cout << i << ": " << g->adj_list[i][j]->v << " " << (g->adj_list[i][
+                    j]->capacity)
+                 << " " << g->adj_list[i][j]->cost << endl;
+        }
+    }
+    cout << endl;
+}
+
 
 //////////////////////////////////////////////////////////////////////////////////////
 ///////////////////// algorytm Bellmana Forda ////////////////////////////////////////
@@ -140,54 +151,10 @@ bool BellmanFord(Graph *g, int s, int t, int *parents, Edge** parentsEdge){
 }
 
 
-//////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////// algorytm Dijkstry /////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////////////
-
-
-// para przechowuje odległość do s wierzchołka v  <dist,u>
-typedef pair<int, int> dist_u;
-
-bool Dijkstra(Graph *g, int s, int t, int *parents, Edge** parentsEdge){
-    // min heap
-    // para u,cost
-    priority_queue<dist_u ,vector<dist_u>, greater<dist_u> > PQ;
-
-    // wszystkie odległości ustalone na inf
-    int distance[g->size];
-    for(int i=0; i<g->size; i++){
-        distance[i] = INT_MAX;
-    }
-
-    distance[s] = 0;
-    PQ.push(make_pair(0, s));
-
-    while (! PQ.empty()){
-        // wyciągamy z kolejki
-        int u = PQ.top().second;
-        PQ.pop();
-
-        // przeglądamy sąsiadów u
-        for(int edge=0; edge<(g->adj_list[u].size()); edge++){
-            if (g->adj_list[u][edge]->capacity != 0){
-                if (relax(u, g->adj_list[u][edge]->v, g->adj_list[u][edge]->cost,distance,parents)){
-                    parentsEdge[g->adj_list[u][edge]->v] = g->adj_list[u][edge];
-                    PQ.push(make_pair(distance[g->adj_list[u][edge]->v],g->adj_list[u][edge]->v));
-                }
-
-            }
-        }
-
-    }
-
-    return distance[t] != INT_MAX;
-}
-
 
 //////////////////////////////////////////////////////////////////////////////////////
 ///////////////////// min cost flow //////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////
-
 
 int min_cost_flow(Graph *g, int s, int t){
     int parents[g->size];
@@ -198,7 +165,8 @@ int min_cost_flow(Graph *g, int s, int t){
     int cost = 0;
     Edge* parentsEdge[g->size];
 
-   while (BellmanFord(g,s,t,parents,parentsEdge)){
+    while (BellmanFord(g,s,t,parents,parentsEdge)){
+
         int current = t;
         int cur_flow = INT_MAX;
         while (current != s){
@@ -217,15 +185,27 @@ int min_cost_flow(Graph *g, int s, int t){
 
             Edge* back_edge = parentsEdge[v]->backEdge;
 
-            back_edge->capacity += cur_flow;
+            if (back_edge != nullptr) {
+                back_edge->capacity += cur_flow;
+
+            }
+            else{
+                add_back_edge(g,parentEdge,parents[v],cur_flow);
+            }
+
             v = parents[v];
         }
 
-       for(int i=0; i<g->size; i++){
-           parents[i] = -1;
-       }
-   }
-   return cost;
+        for(int i=0; i<g->size; i++){
+
+            parents[i] = -1;
+
+        }
+
+    }
+
+    return cost;
+
 }
 
 
@@ -247,10 +227,7 @@ Graph copy_g(Graph* g){
 
     for(int i=0; i<g->size; i++) {
         for (int j = 0; j < g->adj_list[i].size(); j++) {
-            if (! g->adj_list[i][j]->isBack) {
-                add_edge(&cp, i, g->adj_list[i][j]->v, g->adj_list[i][j]->capacity, g->adj_list[i][j]->cost);
-            }
-
+            add_edge(&cp, i, g->adj_list[i][j]->v, g->adj_list[i][j]->capacity, g->adj_list[i][j]->cost);
         }
     }
     return cp;
@@ -306,18 +283,30 @@ int main() {
         int t = s+1;
         int t1 = t+1;
 
+        int actual_king_wins = 0;
+
+
         for (int j = 0; j < n * (n - 1) / 2; j++) {
             // x vs y, winner, bribe
             int x, y, w, b;
             cin >> x >> y >> w >> b;
 
+            if (w == 0) actual_king_wins++;
+
+
+
+
+
             if (x==w){
                 add_edge(&g,cur_match,x,1,0);
                 add_edge(&g,cur_match,y,1,b);
+
+
             }
             else{
                 add_edge(&g,cur_match,y,1,0);
                 add_edge(&g,cur_match,x,1,b);
+
             }
 
             add_edge(&g,s,cur_match,1,0);
@@ -330,7 +319,7 @@ int main() {
         bool found = false;
 
 
-        for (int wins=min_king_wins; wins < n; wins++) {
+        for (int wins=max(min_king_wins, actual_king_wins); wins < n; wins++) {
             Graph graph = copy_g(&g);
 
             add_edge(&graph, t, t1, int(n * (n - 1) / 2) - wins, 0);
@@ -342,7 +331,11 @@ int main() {
                     add_edge(&graph, v, t, wins, 0);
                 }
             }
+
+
             int total_cost = min_cost_flow(&graph, s, t1);
+
+
             if (total_cost <= B){
                 cout << "TAK" << endl;
                 found = true;
