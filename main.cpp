@@ -343,7 +343,6 @@ int main() {
             }
         }
 
-
         if (!found) {
             cout << "NIE" << endl;
         }
