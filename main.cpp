@@ -30,6 +30,7 @@ void print_arr(int *arr, int size){
 struct Edge{
     int v;
     int capacity;
+    int initial_capacity;
     int cost;
     Edge* backEdge;
 };
@@ -37,7 +38,6 @@ struct Edge{
 struct Graph{
     int size;   // liczba wierzchołków
     vector<Edge*> *adj_list;
-
 };
 
 
@@ -45,28 +45,22 @@ void add_edge(Graph *g, int u, int v, int capacity, int cost){
     Edge* edge = new Edge;
     edge->v = v;
     edge->capacity = capacity;
+    edge->initial_capacity = capacity;
     edge->cost = cost;
 
-    edge->backEdge = nullptr;   // początkowo nie ma krawędzi powrotnych
-    (*g).adj_list[u].push_back(edge);
-
-}
-
-// tworzy krawędź powrotną dla krawędzi u->v  (v->u)
-void add_back_edge(Graph *g, Edge* edge, int u, int capacity) {
     Edge* back_edge = new Edge;
     back_edge->v = u;
-    back_edge->capacity = capacity;
-
-    back_edge->cost = -1*edge->cost;
-
-    (*g).adj_list[edge->v].push_back(back_edge);
-
+    back_edge->capacity = 0;
+    back_edge->initial_capacity = 0;
+    back_edge->cost = -1*cost;
 
     edge->backEdge = back_edge;
     back_edge->backEdge = edge;
 
+    (*g).adj_list[u].push_back(edge);
+    (*g).adj_list[v].push_back(back_edge);
 }
+
 
 
 Graph init_graph(int size){
@@ -179,17 +173,8 @@ int min_cost_flow(Graph *g, int s, int t, int required_flow){
             Edge* parentEdge = parentsEdge[v];
             parentEdge->capacity -= cur_flow;
             cost += parentEdge->cost * cur_flow;
-
             Edge* back_edge = parentsEdge[v]->backEdge;
-
-            if (back_edge != nullptr) {
-                back_edge->capacity += cur_flow;
-
-            }
-            else{
-                add_back_edge(g,parentEdge,parents[v],cur_flow);
-            }
-
+            back_edge->capacity += cur_flow;
             v = parents[v];
         }
 
@@ -232,7 +217,6 @@ Graph copy_g(Graph* g){
     }
     return cp;
 }
-
 
 
 int main() {
@@ -278,12 +262,15 @@ int main() {
         int B,n;
         cin >> B >> n;
         Graph g = build_graph(n);
-        int cur_match = n;
-        int s = int((pow(n,2)+n)/2);
-        int t = s+1;
-        int t1 = t+1;
+        int s = n;
+        int t = n+1;
+        int t1 = n+2;
 
-        int actual_king_wins = 0;
+        int wins[n];
+        for(int j=0; j<n; j++){
+            wins[j] = 0;
+        }
+
         int max_king_wins = n-1;
 
         for (int j = 0; j < n * (n - 1) / 2; j++) {
@@ -291,49 +278,38 @@ int main() {
             int x, y, w, b;
             cin >> x >> y >> w >> b;
 
-            if (w == 0) actual_king_wins++;
-
-            if (x==w){
-                add_edge(&g,cur_match,x,1,0);
-                if (b <= B) {
-                    add_edge(&g, cur_match, y, 1, b);
-                }
-                else if (y == 0){
-                    // łapówka w meczu z królem (przegrany) jest większa niż budżet
-                    max_king_wins -= 1;
-                }
+            if (x==w && b <= B){
+                add_edge(&g,x,y,1,b);
             }
-            else{
-                add_edge(&g,cur_match,y,1,0);
-                if (b <= B) {
-                    add_edge(&g,cur_match,x,1,b);
-                }
-                else if (x == 0){
-                    max_king_wins -= 1;
-                }
+            else if (y==w && b <= B){
+                add_edge(&g,y,x,1,b);
             }
 
-            add_edge(&g,s,cur_match,1,0);
+            wins[w]++;
+        }
 
-            cur_match++;
+        // krawędzi ze źródła do zawodników o pojemności równej liczbie zwycięstw
+
+        for (int v = 0; v<n; v++){
+            if (wins[v] > 0){
+                add_edge(&g,s,v,wins[v],0);
+            }
         }
 
 
         int min_king_wins = ceil(static_cast<double>(n-1)/2) ;
         bool found = false;
 
-        cout << max_king_wins << endl;
-        for (int wins=max(min_king_wins, actual_king_wins); wins < max_king_wins + 1; wins++) {
+        for (int w=max(min_king_wins, wins[0]); w < max_king_wins + 1; w++) {
             Graph graph = copy_g(&g);
 
-
-            add_edge(&graph, t, t1, int(n * (n - 1) / 2) - wins, 0);
+            add_edge(&graph, t, t1, int(n * (n - 1) / 2) - w, 0);
 
             for (int v = 0; v < n; v++) {
                 if (v == 0) {
-                    add_edge(&graph, v, t1, wins, 0);
+                    add_edge(&graph, v, t1, w, 0);
                 } else {
-                    add_edge(&graph, v, t, wins, 0);
+                    add_edge(&graph, v, t, w, 0);
                 }
             }
 
