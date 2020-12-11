@@ -206,16 +206,13 @@ Graph build_graph(int entrances){
     return g;
 }
 
-
-Graph copy_g(Graph* g){
-    Graph cp = init_graph(g->size);
-
-    for(int i=0; i<g->size; i++) {
-        for (int j = 0; j < g->adj_list[i].size(); j++) {
-            add_edge(&cp, i, g->adj_list[i][j]->v, g->adj_list[i][j]->capacity, g->adj_list[i][j]->cost);
+// resetuje pojemności krawędzi w grafie do oryginalnych
+void next_try(Graph* g){
+    for(int i=0; i<g->size; i++){
+        for(int j=0; j<g->adj_list[i].size(); j++) {
+            g->adj_list[i][j]->capacity = g->adj_list[i][j]->initial_capacity;
         }
     }
-    return cp;
 }
 
 
@@ -271,6 +268,7 @@ int main() {
             wins[j] = 0;
         }
 
+
         int max_king_wins = n-1;
 
         for (int j = 0; j < n * (n - 1) / 2; j++) {
@@ -296,24 +294,55 @@ int main() {
             }
         }
 
-
         int min_king_wins = ceil(static_cast<double>(n-1)/2) ;
         bool found = false;
 
         for (int w=max(min_king_wins, wins[0]); w < max_king_wins + 1; w++) {
-            Graph graph = copy_g(&g);
 
-            add_edge(&graph, t, t1, int(n * (n - 1) / 2) - w, 0);
+            if (w==max(min_king_wins, wins[0])){
+                // pierwszy przebieg pętli
 
-            for (int v = 0; v < n; v++) {
-                if (v == 0) {
-                    add_edge(&graph, v, t1, w, 0);
-                } else {
-                    add_edge(&graph, v, t, w, 0);
+                // krawędź z pierwszego ujścia do drugiego
+                add_edge(&g, t, t1, int(n * (n - 1) / 2) - w, 0);
+
+
+                // krawędzi od zawodników do odpowiedniego ujścia
+                for (int v = 0; v < n; v++) {
+
+                    if (v == 0) {
+                        add_edge(&g, v, t1, w, 0);
+                    }
+                    else {
+                        add_edge(&g, v, t, w, 0);
+                    }
                 }
             }
 
-            int total_cost = min_cost_flow(&graph, s, t1, int(n*(n-1)/2));
+            else{
+                next_try(&g);
+
+                // aktualizacja krawędzi do t
+                for (int u=0; u<g.adj_list[t].size(); u++){
+                    g.adj_list[t][u]->backEdge->capacity = w;
+                }
+
+                // aktualizacja krawędzi do t1
+                for (int u=0; u<g.adj_list[t1].size(); u++){
+                    if (g.adj_list[t1][u]->v == 0) {
+                        // od króla
+                        g.adj_list[t1][u]->backEdge->capacity = w;
+                    }
+                    else if(g.adj_list[t1][u]->v == t){
+                        // od t
+                        g.adj_list[t1][u]->backEdge->capacity = int(n * (n - 1) / 2) - w;
+                    }
+                }
+            }
+
+
+
+            int total_cost = min_cost_flow(&g, s, t1, int(n*(n-1)/2));
+
 
             if (total_cost != -1 && total_cost <= B){
                 cout << "TAK" << endl;
