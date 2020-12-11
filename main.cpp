@@ -195,7 +195,7 @@ int remove_costless_flow(Graph *g,int n){
 }
 
 
-int min_cost_flow(Graph *g, int s, int t, int required_flow){
+int min_cost_flow(Graph *g, int s, int t, int required_flow, int budget){
     int parents[g->size];
     for(int i=0; i<g->size; i++){
         parents[i] = -1;
@@ -227,6 +227,10 @@ int min_cost_flow(Graph *g, int s, int t, int required_flow){
             v = parents[v];
         }
 
+
+        if (cost > budget){
+            return -1;
+        }
         for(int i=0; i<g->size; i++){
             parents[i] = -1;
         }
@@ -391,7 +395,7 @@ int main() {
             }
 
 
-            int total_cost = min_cost_flow(&g, s, t1, int(n*(n-1)/2));
+            int total_cost = min_cost_flow(&g, s, t1, int(n*(n-1)/2),B);
 
             if (total_cost != -1 && total_cost <= B){
                 cout << "TAK" << endl;
