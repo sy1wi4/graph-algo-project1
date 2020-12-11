@@ -42,6 +42,7 @@ struct Graph{
 
 
 void add_edge(Graph *g, int u, int v, int capacity, int cost){
+
     Edge* edge = new Edge;
     edge->v = v;
     edge->capacity = capacity;
@@ -120,7 +121,6 @@ bool BellmanFord(Graph *g, int s, int t, int *parents, Edge** parentsEdge){
 
 // faster BF algorithm
 
-//    for(int i=0; i<(g->size)-1; i++){
     while (! Q.empty()){
         int u = Q.front();
         Q.pop();
@@ -142,10 +142,58 @@ bool BellmanFord(Graph *g, int s, int t, int *parents, Edge** parentsEdge){
 }
 
 
-
 //////////////////////////////////////////////////////////////////////////////////////
 ///////////////////// min cost flow //////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////
+
+
+// odnajduje krawędź u->v
+Edge* find_edge(Graph* g, int u, int v){
+    for (auto & i : g->adj_list[u]){
+        if (i->v == v){
+            return i;
+        }
+    }
+    return nullptr;
+}
+
+// n - liczba zawodników
+int remove_costless_flow(Graph *g,int n){
+    int removed = 0;
+    for (int v=0; v<n; v++){
+        Edge* edge_from_s = find_edge(g,n,v);
+
+        // król
+        if (v == 0 && edge_from_s != nullptr){
+            Edge* edge_to_t1 = find_edge(g,v,n+2);
+            int Min = min(edge_from_s->capacity, edge_to_t1->capacity);
+            removed += Min;
+            edge_from_s->capacity -= Min;
+            edge_from_s->backEdge->capacity += Min;
+
+            edge_to_t1->capacity -= Min;
+            edge_to_t1->backEdge->capacity += Min;
+        }
+
+        // pozostali
+        else if (v != 0 && edge_from_s != nullptr){
+            Edge* edge_to_t = find_edge(g,v,n+1);
+            Edge* edge_t_to_t1 = find_edge(g,n+1,n+2);
+            int Min = min(min(edge_from_s->capacity, edge_to_t->capacity), edge_t_to_t1->capacity);
+            removed += Min;
+            edge_from_s->capacity -= Min;
+            edge_from_s->backEdge->capacity += Min;
+
+            edge_to_t->capacity -= Min;
+            edge_to_t->backEdge->capacity += Min;
+
+            edge_t_to_t1->capacity -= Min;
+            edge_t_to_t1->backEdge->capacity += Min;
+        }
+    }
+    return removed;
+}
+
 
 int min_cost_flow(Graph *g, int s, int t, int required_flow){
     int parents[g->size];
@@ -155,6 +203,7 @@ int min_cost_flow(Graph *g, int s, int t, int required_flow){
     int flow = 0;
     int cost = 0;
     Edge* parentsEdge[g->size];
+    int removed = remove_costless_flow(g,g->size - 3);
 
     while (BellmanFord(g,s,t,parents,parentsEdge)){
 
@@ -184,7 +233,7 @@ int min_cost_flow(Graph *g, int s, int t, int required_flow){
 
     }
 
-    if (flow == required_flow) {
+    if (flow == required_flow-removed) {
         return cost;
     }
     else{
@@ -194,7 +243,6 @@ int min_cost_flow(Graph *g, int s, int t, int required_flow){
 }
 
 
-
 //////////////////////////////////////////////////////////////////////////////////////
 ///////////////////// budowanie grafu turniejowego ///////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////
@@ -202,15 +250,15 @@ int min_cost_flow(Graph *g, int s, int t, int required_flow){
 // input: B, t
 Graph build_graph(int entrances){
     int n = entrances;
-    Graph g = init_graph(int((pow(n,2)+n+6)/2));
+    Graph g = init_graph(entrances+3);
     return g;
 }
 
 // resetuje pojemności krawędzi w grafie do oryginalnych
 void next_try(Graph* g){
     for(int i=0; i<g->size; i++){
-        for(int j=0; j<g->adj_list[i].size(); j++) {
-            g->adj_list[i][j]->capacity = g->adj_list[i][j]->initial_capacity;
+        for(auto & j : g->adj_list[i]) {
+            j->capacity = j->initial_capacity;
         }
     }
 }
@@ -262,12 +310,10 @@ int main() {
         int s = n;
         int t = n+1;
         int t1 = n+2;
-
         int wins[n];
         for(int j=0; j<n; j++){
             wins[j] = 0;
         }
-
 
         int max_king_wins = n-1;
 
@@ -276,11 +322,17 @@ int main() {
             int x, y, w, b;
             cin >> x >> y >> w >> b;
 
-            if (x==w && b <= B){
-                add_edge(&g,x,y,1,b);
+            if (x==w){
+                if (b <= B) add_edge(&g,x,y,1,b);
+                else if (b > B and y==0){
+                    max_king_wins -= 1;
+                }
             }
-            else if (y==w && b <= B){
-                add_edge(&g,y,x,1,b);
+            else if (y==w){
+                if (b <= B) add_edge(&g,y,x,1,b);
+                else if (b > B and x==0){
+                    max_king_wins -= 1;
+                }
             }
 
             wins[w]++;
@@ -297,8 +349,7 @@ int main() {
         int min_king_wins = ceil(static_cast<double>(n-1)/2) ;
         bool found = false;
 
-        for (int w=max(min_king_wins, wins[0]); w < max_king_wins + 1; w++) {
-
+        for (int w=max(min_king_wins, wins[0]); w < max_king_wins+1; w++) {
             if (w==max(min_king_wins, wins[0])){
                 // pierwszy przebieg pętli
 
@@ -322,27 +373,25 @@ int main() {
                 next_try(&g);
 
                 // aktualizacja krawędzi do t
-                for (int u=0; u<g.adj_list[t].size(); u++){
-                    g.adj_list[t][u]->backEdge->capacity = w;
+                for (auto & u : g.adj_list[t]){
+                    u->backEdge->capacity = w;
                 }
 
                 // aktualizacja krawędzi do t1
-                for (int u=0; u<g.adj_list[t1].size(); u++){
-                    if (g.adj_list[t1][u]->v == 0) {
+                for (auto & u : g.adj_list[t1]){
+                    if (u->v == 0) {
                         // od króla
-                        g.adj_list[t1][u]->backEdge->capacity = w;
+                        u->backEdge->capacity = w;
                     }
-                    else if(g.adj_list[t1][u]->v == t){
+                    else if(u->v == t){
                         // od t
-                        g.adj_list[t1][u]->backEdge->capacity = int(n * (n - 1) / 2) - w;
+                        u->backEdge->capacity = int(n * (n - 1) / 2) - w;
                     }
                 }
             }
 
 
-
             int total_cost = min_cost_flow(&g, s, t1, int(n*(n-1)/2));
-
 
             if (total_cost != -1 && total_cost <= B){
                 cout << "TAK" << endl;
